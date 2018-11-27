@@ -67,7 +67,7 @@ bot.recognizer(recognizer);
 // See https://docs.microsoft.com/en-us/bot-framework/nodejs/bot-builder-nodejs-recognize-intent-luis 
 bot.dialog('GreetingDialog',
     (session) => {
-        session.send('\%s\, shopping now ? How can I help ?', session.message.text);
+        session.send('\%s\,Hi! Do you want to shopping now ? How can I help ?', session.message.text);
         session.endDialog();
     }
 ).triggerAction({
