@@ -65,12 +65,35 @@ bot.recognizer(recognizer);
 
 // Add a dialog for each intent that the LUIS app recognizes.
 // See https://docs.microsoft.com/en-us/bot-framework/nodejs/bot-builder-nodejs-recognize-intent-luis 
-bot.dialog('GreetingDialog',
-    (session) => {
-        session.send('\%s\, Do you want to shopping now ? How can I help ?', session.message.text);
-        session.endDialog();
-    }
-).triggerAction({
+bot.dialog('GreetingDialog',[
+  //(session) => {builder.Prompts.text(session, "Hi...How can I help ?")},
+  (session) => {
+    //session.dialogData.firstInput = results.response
+    // make the api call here with the inputs received from the user
+    // below example is for a post call
+      builder.Prompts.text(session, "Hi...How can I help ?")
+      request.post('http://104.211.102.154:3333/del_cart', {
+        'auth': {
+            'user': 'abc',
+            'pass': 'xyz',
+            'sendImmediately': false
+          }, 
+          'json': {
+            //item: session.dialogData.firstInput
+            item: ""
+          }
+        }, (error, response, body) => {
+                var data = body;
+                if (data['status'] == "successful") {
+        		session.endDialog();
+    			}
+                else {
+                        session.send('We are sorry, we are having system issue, please start over', data.item);
+        		        session.endDialog();
+    			     };
+              })        
+  }
+]).triggerAction({
     matches: 'Greeting'
 });
 
@@ -80,7 +103,6 @@ bot.dialog('GreetingDialog',
 // Dialog or Find Items.
 bot.dialog('Shopping.FindItemDialog', [
   (session) => {builder.Prompts.text(session, "Sure ! What do you like to buy ?")},
-  //(session) => {session.send('Sure ! What do you like to buy ?', session.message.text);},
   (session, results) => {
     session.dialogData.firstInput = results.response
     // make the api call here with the inputs received from the user
@@ -162,8 +184,27 @@ bot.dialog('AddToShoppingCartDialog', [
         session.userData.shoppingCarts[shoppingCart.shoppingItem] = shoppingCart;
 
         // Send confirmation to user
-        session.endDialog('Creating shoppingcart with item "%s" with quantity of "%s"',
-        shoppingCart.shoppingItem, shoppingCart.shoppingQuantity);
+
+        request.post('http://104.211.102.154:3333/cart', {
+        'auth': {
+            'user': 'abc',
+            'pass': 'xyz',
+            'sendImmediately': false
+          }, 
+          'json': {
+            shopping_item: shoppingCart.shoppingItem,
+            shopping_quantity: shoppingCart.shoppingQuantity 
+          }
+        }, (error, response, body) => {
+                var data = body;
+                if (data['status'] == "successful") {
+                        session.endDialog('Item "%s" with quantity of "%s added to your shopping cart"',
+                        shoppingCart.shoppingItem, shoppingCart.shoppingQuantity);
+    			}
+                else {
+                        session.endDialog('Technical problem, items cannot be added, please try again later');
+    			     };
+              })
     }
 ]).triggerAction({ 
     matches: 'Shopping.AddToCart',
@@ -172,3 +213,40 @@ bot.dialog('AddToShoppingCartDialog', [
     matches: /^(cancel|nevermind)/i,
     confirmPrompt: "Are you sure?"
 });
+
+
+
+
+// Dialog or Buy Items.
+bot.dialog('Shopping.BuyItemDialog',[
+  (session) => {builder.Prompts.text(session, "Do you like to process your cart ?, please confirm")},
+  (session, results) => {
+    session.dialogData.firstInput = results.response
+    // make the api call here with the inputs received from the user
+    // below example is for a post call
+      request.post('http://104.211.102.154:3333/show_cart', {
+        'auth': {
+            'user': 'abc',
+            'pass': 'xyz',
+            'sendImmediately': false
+          }, 
+          'json': {
+            item: session.dialogData.firstInput
+          }
+        }, (error, response, body) => {
+                var data = body;
+                if (data['status'] == "found_cart") {
+                        session.send('Your cart total is : Rs. \%s\ ', data['cart_total']);
+        		session.endDialog();
+    			}
+                else {
+                        session.send('You do not have any item in the cart');
+        		        session.endDialog();
+    			     };
+              })        
+  }
+]
+).triggerAction({
+    matches: 'Shopping.BuyItem'
+});
+
